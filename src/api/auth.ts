@@ -17,6 +17,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  confirmPassword?: string;
 }
 
 export interface LoginData {
@@ -52,7 +53,7 @@ export const registerUser = async ({
 
   const user: FakeUser = {
     id: Date.now(),
-    name,
+    name: name,
     email,
     password,
   };

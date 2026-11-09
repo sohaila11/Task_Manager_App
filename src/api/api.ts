@@ -1,3 +1,5 @@
+import { ApiError } from '../types/api';
+import { AuthResponse, LoginData, RegisterData, User } from './auth';
 // API Client - Student Exercise
 //
 // API base: http://localhost:4000
@@ -8,6 +10,8 @@
 // Complete the TODOs below using TypeScript and fetch().
 
 const BASE_URL = 'http://localhost:4000';
+const TOKEN_KEY = 'tf_token';
+const USER_KEY = 'tf_user'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TODO 1: Create application types
@@ -72,10 +76,7 @@ const BASE_URL = 'http://localhost:4000';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getToken = (): string | null => {
-  // TODO:
-  // Read "tf_token" from localStorage.
-
-  return null;
+    return localStorage.getItem(TOKEN_KEY);;
 };
 
 
@@ -83,14 +84,7 @@ const getToken = (): string | null => {
 // TODO 3: HTTP request helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-// TODO:
-// Replace "string" with a proper HttpMethod type.
-//
-// Only allow:
-// GET
-// POST
-// PATCH
-// DELETE
+export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 const request = async <T>(
   method: string,
@@ -101,8 +95,7 @@ const request = async <T>(
   // TODO:
   // 1. Create the HTTP headers.
   //
-  // Content-Type should be:
-  // application/json
+  const headers:Record<string,string>={'Content-Type': 'application/json'};
 
 
   // TODO:
@@ -113,6 +106,12 @@ const request = async <T>(
   //
   // Expected format:
   // Bearer <token>
+
+  if(auth){
+    const token = getToken();
+    if(!token) throw new Error ('Not authenticated');
+    headers.Authorization = `Bearer ${token}`;
+  }
 
 
   // TODO:
@@ -125,14 +124,24 @@ const request = async <T>(
   // - headers
   // - body
 
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
 
   // TODO:
   // 4. Handle status 204 No Content.
 
+  if(response.status === 204) {
+    return undefined as T;
+  }
 
   // TODO:
   // 5. Parse the JSON response.
 
+  const data = await response.json().catch(() => null);
 
   // TODO:
   // 6. Handle unsuccessful HTTP responses.
@@ -146,11 +155,17 @@ const request = async <T>(
   //   }
   // }
 
+  if(!response.ok) {
+    const errorMessage = data?.error || 'Request failed';
+    const fieldErrors = data?.fields;
+    throw new ApiError(errorMessage, response.status, fieldErrors);
+  }
+
 
   // TODO:
   // 7. Return the successful response.
 
-  throw new Error('TODO: Implement request()');
+  return data;
 };
 
 
@@ -166,14 +181,30 @@ const request = async <T>(
 // patch<T>()
 // del<T>()
 
+export const get = <T>(path: string, auth = true): Promise<T> => {
+  return request<T>('GET', path, undefined, auth);
+};
+
+export const post = <T>(path: string, body?: unknown, auth = true): Promise<T> => {
+  return request<T>('POST', path, body, auth);
+};
+
+export const patch = <T>(path: string, body?: unknown, auth = true): Promise<T> => {
+  return request<T>('PATCH', path, body, auth);
+};
+
+export const del = <T>(path: string, auth = true): Promise<T> => {
+  return request<T>('DELETE', path, undefined, auth);
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TODO 5: Authentication
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const registerUser = async (
-  data: unknown,
-): Promise<unknown> => {
+  data: RegisterData,
+): Promise<AuthResponse> => {
   // TODO:
   // Replace "unknown" with your RegisterData and AuthResponse types.
   //
@@ -186,13 +217,15 @@ export const registerUser = async (
   // - Save the user
   // - Return the response
 
-  throw new Error('TODO: Implement registerUser()');
+  const response = await post<AuthResponse>('/auth/register', data, false);
+  saveSession(response);
+  return response;
 };
 
 
 export const loginUser = async (
-  data: unknown,
-): Promise<unknown> => {
+  data: LoginData,
+): Promise<AuthResponse> => {
   // TODO:
   // Replace "unknown" with the correct TypeScript types.
   //
@@ -205,11 +238,15 @@ export const loginUser = async (
   // - Save user
   // - Return response
 
-  throw new Error('TODO: Implement loginUser()');
+  const response = await post<AuthResponse>('/auth/login', data, false);
+  saveSession(response);
+  return response;
+
+  
 };
 
 
-export const getMe = (): unknown => {
+export const getMe = (): User | null => {
   // TODO:
   // Replace "unknown" with the proper return type.
   //
@@ -220,6 +257,14 @@ export const getMe = (): unknown => {
   // - no user exists
   // - stored JSON is invalid
 
+  const userJson = localStorage.getItem(USER_KEY);
+  if (!userJson) return null;
+  try {
+    const user = JSON.parse(userJson);
+    return user;
+  } catch {
+    return null;
+  }           
   return null;
 };
 
@@ -228,6 +273,7 @@ export const isAuthenticated = (): boolean => {
   // TODO:
   // The user is authenticated only when
   // both token and user exist.
+  Boolean(getToken() && getMe());
 
   return false;
 };
@@ -238,6 +284,8 @@ export const logout = (): void => {
   // Remove:
   // - tf_token
   // - tf_user
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 };
 
 
@@ -247,6 +295,11 @@ export const logout = (): void => {
 // It should save:
 // - token as "tf_token"
 // - user as "tf_user"
+
+const saveSession = ({ token, user }: AuthResponse): void => {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
 
 
 // ─────────────────────────────────────────────────────────────────────────────

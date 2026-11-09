@@ -220,7 +220,7 @@ const createId = (): string => {
   // Hint:
   // You can use Date.now() + a random value.
 
-  throw new Error('TODO: Implement createId()');
+  return `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 const getCurrentDate = (): string => {
@@ -230,7 +230,7 @@ const getCurrentDate = (): string => {
   throw new Error('TODO: Implement getCurrentDate()');
 };
 
-const makeToken = (userId: string): string => {
+const makeToken = (userId: string): string =>  btoa(JSON.stringify({ userId, exp: Date.now() + 24 * 60 * 60 * 1000 }));
   // TODO:
   // Create a mock authentication token.
   //
@@ -243,22 +243,20 @@ const makeToken = (userId: string): string => {
   // Hint:
   // Use JSON.stringify() and btoa().
 
-  void userId;
 
-  throw new Error('TODO: Implement makeToken()');
-};
+ 
 
-const getPublicUser = (user: User): PublicUser => {
+const getPublicUser = (user: User): PublicUser => ({
   // TODO:
   // Convert User into PublicUser.
   //
   // IMPORTANT:
   // Never expose the user's password.
 
-  void user;
-
-  throw new Error('TODO: Implement getPublicUser()');
-};
+  id: user.id,
+  name: user.name,
+  email: user.email,
+ });
 
 const getUser = (request: Request): User | null => {
   // TODO:
@@ -290,8 +288,8 @@ const unauthorized = () => {
   // HTTP status: 401
 
   return HttpResponse.json(
-    { error: 'TODO' },
-    { status: 501 },
+    { error: 'unauthorized' },
+    { status: 401 },
   );
 };
 
@@ -304,8 +302,8 @@ const notFound = () => {
   // HTTP status: 404
 
   return HttpResponse.json(
-    { error: 'TODO' },
-    { status: 501 },
+    { error: 'not found' },
+    { status: 404 },
   );
 };
 
@@ -318,8 +316,8 @@ const forbidden = () => {
   // HTTP status: 403
 
   return HttpResponse.json(
-    { error: 'TODO' },
-    { status: 501 },
+    { error: 'forbiden' },
+    { status: 403 },
   );
 };
 
@@ -337,8 +335,8 @@ const validationError = (fields: ValidationFields) => {
   void fields;
 
   return HttpResponse.json(
-    { error: 'TODO' },
-    { status: 501 },
+    { error: 'validation failed', fields },
+    { status: 400 },
   );
 };
 
@@ -382,13 +380,37 @@ export const handlers = [
     // 10. Return token + PublicUser.
     //
     // Success HTTP status: 201.
+    const body = (await request.json().catch(() => ({}))) as RegisterRequest;
+    const name = (body.name ?? '').trim();
+    const email = (body.email ?? '').trim().toLowerCase();
+    const password = body.password ?? '';
 
-    void request;
+    const fields: ValidationFields = {};
+    if (!name) fields.name = 'Full Name is required';
+    if (!email) fields.email = 'Email is required';
+    if (!password) fields.password = 'Password is required';
+    if (Object.keys(fields).length > 0) return validationError(fields);
 
-    return HttpResponse.json(
-      { error: 'TODO: Implement registration' },
-      { status: 501 },
-    );
+    const existingUser= db.users.find(u=>u.email.toLowerCase() === email)
+    if (existingUser) {
+      fields.email = 'Email is already registered';
+      return validationError(fields);
+    }
+
+    const Id= createId();
+    const newUser: User = {
+      id: Id,
+      name,
+      email,
+      password,
+    };
+    db.users.push(newUser);
+    return HttpResponse.json({
+      token: makeToken(newUser.id),
+      user: getPublicUser(newUser),
+      status: 201,
+    })
+   
   }),
 
   // POST /auth/login
@@ -402,12 +424,23 @@ export const handlers = [
     // 5. Generate authentication token.
     // 6. Return token + PublicUser.
 
-    void request;
+     const body = (await request.json().catch(() => ({}))) as LoginRequest;
+    const email = (body.email?? '').trim().toLowerCase();
+    const password = body.password ?? '';
 
-    return HttpResponse.json(
-      { error: 'TODO: Implement login' },
-      { status: 501 },
-    );
+    const fields: ValidationFields = {};
+    if (!email) fields.email = 'Email is required';
+    if (!password) fields.password = 'Password is required';
+    if (Object.keys(fields).length > 0) return validationError(fields);
+
+    const user = db.users.find(u => u.email.toLowerCase() === email && u.password === password,);
+
+    if(!user) return unauthorized();
+
+    return HttpResponse.json({
+      token: makeToken(user.id),
+      user: getPublicUser(user),
+    });
   }),
 
   // GET /auth/me
