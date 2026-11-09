@@ -1,6 +1,6 @@
 import { useNavigate ,Navigate, Link } from 'react-router-dom';
 import '../index.scss';
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import {validateLogin, type LoginErrors} from '../utils/validation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { login, clearError } from '../store/authSlice';
@@ -12,6 +12,10 @@ const LoginPage = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const { user, loading, error: formError, fieldErrors } = useAppSelector((state) => state.auth);
     const [validationErrors, setValidationErrors] = useState<LoginErrors>({});
+
+    useEffect(() => {
+    dispatch(clearError());
+    }, [dispatch]);
 
     if (user) return <Navigate to="/dashboard" replace />;
 

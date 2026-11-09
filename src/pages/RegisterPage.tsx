@@ -10,8 +10,13 @@ const RegisterPage = () => {
 const dispatch = useAppDispatch();
 const navigate = useNavigate();
 
+useEffect(() => {
+ dispatch(clearError());
+}, [dispatch]);
+
+
 const [formData, setFormData] = useState({
-  fullname: '',
+  name: '',
   email: '',
   password: '',
   confirmPassword: ''
@@ -23,10 +28,6 @@ const [validationErrors, setValidationErrors] = useState({});
 const {user, loading, error: formError, fieldErrors } = useAppSelector((state) => state.auth);
 
 const errors : RegisterErrors = { ...validationErrors , ...fieldErrors };
-
-useEffect(() => {
- dispatch(clearError());
-}, [dispatch]);
 
 if(user) return <Navigate to="/dashboard" replace/>;
 
@@ -45,8 +46,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
    const result = await dispatch(
      register({ 
-       fullname: formData.fullname,
-       email: formData.email,
+       name: formData.name.trim(),
+       email: formData.email.trim(),
        password: formData.password,
        confirmPassword: formData.confirmPassword
      })
@@ -64,25 +65,25 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           <p className="auth-subtitle">Create your account to get started with Task Flow </p>
           {formError && (<div className="auth-alert" role="alert">{formError}</div>)}
           <div className="form-group">
-          <label htmlFor="fullname">Full Name:</label>
-          <input type="text" id="fullname" name="fullname" value={formData.fullname} onChange={handleChange} />
-          {errors.fullname && (<div className="form-error">{errors.fullname}</div>)}
+          <label htmlFor="name">Full Name:</label>
+          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} />
+          {errors.name && (<div className="field-error">{errors.name}</div>)}
           </div>
           <div className="form-group">
           <label htmlFor="email">Email:</label>
           <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} />
           </div>
-          {errors.email && (<div className="form-error">{errors.email}</div>)}
+          {errors.email && (<div className="field-error">{errors.email}</div>)}
           <div className="form-group">
           <label htmlFor="password">Password:</label>
           <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} />
           </div>
-          {errors.password && (<div className="form-error">{errors.password}</div>)}
+          {errors.password && (<div className="field-error">{errors.password}</div>)}
           <div className="form-group">
           <label htmlFor="confirmPassword">Confirm Password:</label>
           <input type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}/>
           </div>
-          {errors.confirmPassword && (<div className="form-error">{errors.confirmPassword}</div>)}
+          {errors.confirmPassword && (<div className="field-error">{errors.confirmPassword}</div>)}
           <button className="btn-primary" type="submit">Sign up</button>
           <p className="auth-footer">Already have an account? <Link to="/login">Sign in</Link></p>
         </form>

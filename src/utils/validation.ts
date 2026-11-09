@@ -23,11 +23,11 @@ export const validateLogin = ({email, password}: LoginData): LoginErrors => {
   return errors;
 };
  
-export const validateRegister = ({fullname, email, password}: RegisterData, ConfirmPassword?: string): RegisterErrors => {
+export const validateRegister = ({name, email, password}: RegisterData, ConfirmPassword?: string): RegisterErrors => {
   const errors: RegisterErrors = {};
 
-  if (!fullname) {
-    errors.fullname = "Name is required";
+  if (!name.trim()) {
+    errors.name = "Name is required";
   }
 
   if (!email) {
